@@ -1,0 +1,13 @@
+{
+  "name": "racetime-discord-bot",
+  "version": "1.0.0",
+  "description": "Race announcer bot for racetime.gg",
+  "homepage": "https://github.com/deains/racetime-discord-bot",
+  "license": "GPL-3.0",
+  "main": "index.js",
+  "dependencies": {
+    "discord.js": "^12.2.0",
+    "get-json": "^1.0.1",
+    "jsonfile": "^6.0.1"
+  }
+}

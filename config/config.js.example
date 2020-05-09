@@ -1,0 +1,3 @@
+module.exports = {
+	token: '<bot token goes here>',
+};
