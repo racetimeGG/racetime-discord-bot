@@ -229,6 +229,24 @@ client.on('message', message => {
 				}
 			}
 		}
+		if (message.channel.id === config.debugChannel) {
+            if (command === 'rtlistall') {
+				message.channel.send(
+					'Here are all the race categories I am currently announcing:'
+				);
+				state.announcers.forEach(item => {
+					let channel = getChannelFromMention('<#' + item.channel + '>');
+					getCategory(item.category, category => {
+					    if (!category) return;
+						message.channel.send(
+						    channel.guild.toString() + ' - '
+							+ channel.toString() + ' - '
+							+ category.name + ' (' + category.slug + ')'
+						);
+					});
+				});
+            }
+        }
 		if (command === 'rtclear') {
 			if (args.length < 1) {
 				message.channel.send(
