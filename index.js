@@ -60,6 +60,10 @@ function announceRace(race, channel, started) {
  */
 function cleanupState() {
     const cutoff = new Date().getTime() - 86400000;
+    state.announcers = state.announcers.filter(item => {
+        let channel = getChannelFromMention('<#' + item.channel + '>');
+        return !!channel;
+    });
     state.races = state.races.filter(item => item.announced >= cutoff);
     commitState();
 }
