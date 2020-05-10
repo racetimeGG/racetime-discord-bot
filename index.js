@@ -7,16 +7,22 @@ const configFile = './config/config.js';
 const stateFile = './config/state.json';
 
 jsonfile.spaces = 4;
+
+let state = {
+    announcers: [],
+    races: []
+};
+
 if (!fs.existsSync(stateFile)) {
-    jsonfile.writeFileSync(stateFile, {
-        announcers: [],
-        races: []
-    }, {flag: 'wx'});
+    jsonfile.writeFileSync(stateFile, state);
+} else {
+    state = jsonfile.readFileSync(stateFile);
+    let now = new Date().toISOString().replace(/:/g, '');
+    jsonfile.writeFileSync('./config/state-' + now + '.json', state);
 }
 
 const config = require(configFile);
 let currentRaces = [];
-let state = jsonfile.readFileSync(stateFile);
 
 const client = new discord.Client();
 client.login(config.token);
