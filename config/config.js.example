@@ -1,4 +1,4 @@
 module.exports = {
     debugChannel: 0,
-	token: '<bot token goes here>',
+    token: '<bot token goes here>',
 };
