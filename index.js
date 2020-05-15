@@ -33,8 +33,9 @@ function getRace(race) {
             if (error) {
                 console.error(error);
                 resolve(null);
+            } else {
+                resolve(race);
             }
-            resolve(race);
         })
     })
 }
@@ -88,14 +89,13 @@ function announceRace(race, channel, started) {
 function editRaceAnnouncement(race, channel, messageID) {
     return new Promise(resolve => {
         let embed = createEmbed(race, true);
-        channel.messages.fetch(messageID)
-            .then(raceMsg => {
-                raceMsg.edit(embed);
-                resolve(raceMsg.id);
-            }).catch(e => {
-                console.error("error while updating discord announcement: " + e);
-                resolve(null);
-            });
+        channel.messages.fetch(messageID).then(raceMsg => {
+            raceMsg.edit(embed);
+            resolve(raceMsg.id);
+        }).catch(e => {
+            console.error("error while updating discord announcement: " + e);
+            resolve(null);
+        });
     });
 }
 
@@ -107,15 +107,17 @@ function editRaceAnnouncement(race, channel, messageID) {
  * @param {boolean} retry
  */
 function removeRaceAnnouncement(channel, messageID, retry = false) {
-    channel.messages.fetch(messageID)
-        .then(raceMsg => {
-            raceMsg.delete();
-        }).catch(e => {
-            if (retry)
-                console.error("error while removing discord announcement (",channel,"|",messageID,"): " + e)
-            else setTimeout(() => removeRaceAnnouncement(channel, messageID, true), 10000); //attempt deletion again 10 seconds later
-        });
-
+    channel.messages.fetch(messageID).then(raceMsg => {
+        raceMsg.delete();
+    }).catch(e => {
+        if (retry) {
+            console.error("error while removing discord announcement (", channel, "|", messageID, "): " + e);
+        }
+        else {
+            // attempt deletion again 10 seconds later
+            setTimeout(() => removeRaceAnnouncement(channel, messageID, true), 10000);
+        }
+    });
 }
 
 
@@ -132,10 +134,10 @@ function cleanupState() {
         let ongoingRaces = response.races;
 
         for (const [index, entry] of state.races.entries()) {
-            let ongoingRaceIndex = ongoingRaces.findIndex(ongoingRace => ongoingRace.name == entry.race);
+            let ongoingRaceIndex = ongoingRaces.findIndex(ongoingRace => ongoingRace.name === entry.race);
 
-            if (ongoingRaceIndex == -1) {
-                for (channelID of Object.keys(entry.announcementMsgs)) {
+            if (ongoingRaceIndex === -1) {
+                for (let channelID of Object.keys(entry.announcementMsgs)) {
                     const channel = getChannelFromMention('<#' + channelID + '>');
                     if (channel)
                         removeRaceAnnouncement(channel, entry.announcementMsgs[channelID]);
@@ -217,8 +219,7 @@ function getCategory(slug, callback) {
  * @returns {Channel}
  */
 function getChannelFromMention(mention) {
-    if (!mention) return;
-    if (mention.startsWith('<#') && mention.endsWith('>')) {
+    if (mention && mention.startsWith('<#') && mention.endsWith('>')) {
         mention = mention.slice(2, -1);
 
         if (mention.startsWith('!')) {
@@ -227,6 +228,7 @@ function getChannelFromMention(mention) {
 
         return client.channels.cache.get(mention);
     }
+    return null;
 }
 
 /**
