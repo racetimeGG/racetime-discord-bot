@@ -305,7 +305,7 @@ client.on('message', message => {
 
     const args = message.content.slice(1).split(/ +/);
     const command = args.shift().toLowerCase();
-    if (message.member.hasPermission('ADMINISTRATOR')) {
+    if (message.member.hasPermission('MANAGE_GUILD')) {
         if (command === 'rtadd') {
             if (args.length < 2) {
                 message.channel.send(
