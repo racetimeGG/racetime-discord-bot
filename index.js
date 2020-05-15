@@ -27,6 +27,38 @@ let currentRaces = [];
 const client = new discord.Client();
 client.login(config.token);
 
+function getRace(race) {
+    return new Promise(resolve => {
+        getJSON('https://racetime.gg' + race.data_url, function(error, race) {
+            if (error) {
+                console.error(error);
+                resolve(null);
+            }
+            resolve(race);
+        })
+    })
+}
+
+function createEmbed(race, started) {
+    let embed = new discord.MessageEmbed()
+        .setColor('#26dd9a')
+        .setTitle(race.category.name + ' ~ ' + race.goal.name)
+        .setURL('https://racetime.gg' + race.url)
+        .setDescription(race.status.help_text)
+        .addField('Entrants', race.entrants_count + ' total, ' + race.entrants_count_inactive + ' inactive')
+        .setFooter('racetime.gg', 'https://racetime.gg/icon-512x512.png');
+    if (race.category.image) {
+        embed.setThumbnail('https://racetime.gg' + race.category.image);
+    }
+    if (started) {
+        embed.setAuthor(
+            'Race room opened by ' + race.opened_by.full_name,
+            race.opened_by.avatar ? ('https://racetime.gg' + race.opened_by.avatar) : null
+        );
+    }
+    return embed;
+}
+
 /**
  * Announce a race to a channel.
  *
@@ -36,32 +68,12 @@ client.login(config.token);
  */
 function announceRace(race, channel, started) {
     return new Promise(resolve => {
-        getJSON('https://racetime.gg' + race.data_url, function (error, race) {
-            if (error) {
-                return console.error(error);
-            }
-            let embed = new discord.MessageEmbed()
-                .setColor('#26dd9a')
-                .setTitle(race.category.name + ' ~ ' + race.goal.name)
-                .setURL('https://racetime.gg' + race.url)
-                .setDescription(race.status.help_text)
-                .addField('Entrants', race.entrants_count + ' total, ' + race.entrants_count_inactive + ' inactive')
-                .setFooter('racetime.gg', 'https://racetime.gg/icon-512x512.png');
-            if (race.category.image) {
-                embed.setThumbnail('https://racetime.gg' + race.category.image);
-            }
-            if (started) {
-                embed.setAuthor(
-                    'New race room opened by ' + race.opened_by.full_name,
-                    race.opened_by.avatar ? ('https://racetime.gg' + race.opened_by.avatar) : null
-                );
-            }
-            channel.send(embed).then(sentMessage => {
-                resolve(sentMessage.id);
-            }).catch(e => {
-                console.error("error while sending announcement: " + e);
-                resolve(null);
-            });
+        let embed = createEmbed(race, started);
+        channel.send(embed).then(sentMessage => {
+            resolve(sentMessage.id);
+        }).catch(e => {
+            console.error("error while sending announcement: " + e);
+            resolve(null);
         });
     });
 }
@@ -75,36 +87,16 @@ function announceRace(race, channel, started) {
  */
 function editRaceAnnouncement(race, channel, messageID) {
     return new Promise(resolve => {
-        getJSON('https://racetime.gg' + race.data_url, function (error, race) {
-            if (error) {
-                return console.error(error);
-            }
-            let embed = new discord.MessageEmbed()
-                .setColor('#26dd9a')
-                .setTitle(race.category.name + ' ~ ' + race.goal.name)
-                .setURL('https://racetime.gg' + race.url)
-                .setDescription(race.status.help_text)
-                .addField('Entrants', race.entrants_count + ' total, ' + race.entrants_count_inactive + ' inactive')
-                .setFooter('racetime.gg', 'https://racetime.gg/icon-512x512.png');
-            if (race.category.image) {
-                embed.setThumbnail('https://racetime.gg' + race.category.image);
-            }
-            embed.setAuthor(
-                'Race room opened by ' + race.opened_by.full_name,
-                race.opened_by.avatar ? ('https://racetime.gg' + race.opened_by.avatar) : null
-            );
-
-            channel.messages.fetch(messageID)
-                .then(raceMsg => {
-                    raceMsg.edit(embed);
-                    resolve(raceMsg.id);
-                }).catch(e => {
-                    console.error("error while updating discord announcement: " + e);
-                    resolve(null);
-                });
-        });
+        let embed = createEmbed(race, true);
+        channel.messages.fetch(messageID)
+            .then(raceMsg => {
+                raceMsg.edit(embed);
+                resolve(raceMsg.id);
+            }).catch(e => {
+                console.error("error while updating discord announcement: " + e);
+                resolve(null);
+            });
     });
-
 }
 
 /**
@@ -129,7 +121,7 @@ function removeRaceAnnouncement(channel, messageID, retry = false) {
 
 /**
  * Clear out any old announced races from the state object.
- * 
+ *
  * Races on racetime.gg can never last longer than 24 hours.
  */
 function cleanupState() {
@@ -248,24 +240,28 @@ function getCurrentRaces() {
             return console.error(error);
         }
         currentRaces = response.races;
-        for (race of currentRaces) {
-
-            let stateObjectIndex = state.races.findIndex(trackedRace => trackedRace.race == race.name);
+        for (let raceSummary of currentRaces) {
+            let race = await getRace(raceSummary);
+            let stateObjectIndex = state.races.findIndex(trackedRace => trackedRace.race === race.name);
 
             let raceObj = {
-                race: race.name
+                race: race.name,
+                version: race.version,
             };
-            if (stateObjectIndex != -1 && state.races[stateObjectIndex].announced)
-                raceObj.announced = state.races[stateObjectIndex].announced
-            else raceObj.announcementMsgs = new Date().getTime();
-       
-            if (stateObjectIndex != -1 && Object.keys(state.races[stateObjectIndex].announcementMsgs).length > 0) {
+
+            // Ignore this race if it's already been processed and there are no new changes
+            if (stateObjectIndex !== -1 && state.races[stateObjectIndex].version >= race.version) {
+                continue;
+            }
+
+            if (stateObjectIndex !== -1 && Object.keys(state.races[stateObjectIndex].announcementMsgs).length > 0) {
                 raceObj.announcementMsgs = state.races[stateObjectIndex].announcementMsgs
-            } else raceObj.announcementMsgs = {};
+            } else {
+                raceObj.announcementMsgs = {};
+            }
 
             let categoryAnnouncers = getAnnouncersForCategory(race.category.slug);
-            for (channelID of categoryAnnouncers) {
-
+            for (let channelID of categoryAnnouncers) {
                 const channel = getChannelFromMention('<#' + channelID + '>');
                 if (channel) {
                     let annoucementID;
@@ -275,17 +271,20 @@ function getCurrentRaces() {
                     }
                     else {
                         annoucementID = await announceRace(race, channel, true);
-                        if (annoucementID != null)
+                        if (annoucementID != null) {
                             raceObj.announcementMsgs[channelID] = annoucementID;
+                        }
                     }
                 }
-            };
-            if (stateObjectIndex != -1)
-                state.races[stateObjectIndex] = raceObj;
-            else state.races.push(raceObj);
+            }
 
+            if (stateObjectIndex !== -1) {
+                state.races[stateObjectIndex] = raceObj;
+            } else {
+                state.races.push(raceObj);
+            }
             commitState();
-        };
+        }
     });
 }
 
@@ -417,8 +416,8 @@ client.on('message', message => {
         if (races.length === 0) {
             message.channel.send('There are no races going on at the moment.');
         } else {
-            races.forEach(race => {
-                announceRace(race, message.channel, false);
+            races.forEach(raceSummary => {
+                getRace(raceSummary).then(race => announceRace(race, message.channel, false));
             });
         }
     }
