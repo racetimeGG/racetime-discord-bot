@@ -7,7 +7,7 @@ Discord bot for [racetime.gg](https://racetime.gg), written in JavaScript using
 
 This is the source code repository for the bot. If you're looking to add the
 production version to your Discord community, please read the
-[wiki guide](https://github.com/deains/racetime-app/wiki/Discord-bot) page.
+[wiki guide](https://github.com/racetimeGG/racetime-app/wiki/Discord-bot) page.
 
 ## How to get started
 
