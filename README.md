@@ -1,6 +1,7 @@
 # racetime-discord-bot
 
 [![Discord](https://discordapp.com/api/guilds/660452709044060171/embed.png?style=shield)](https://discord.racetime.gg)
+![Twitter Follow](https://img.shields.io/twitter/follow/racetimeGG?style=social)
 
 Discord bot for [racetime.gg](https://racetime.gg), written in JavaScript using
 [discord.js](https://discord.js.org).
