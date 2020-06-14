@@ -47,7 +47,7 @@ function createEmbed(race, started) {
         .setURL('https://racetime.gg' + race.url)
         .setDescription(race.status.help_text)
         .addField('Entrants', race.entrants_count + ' total, ' + race.entrants_count_inactive + ' inactive')
-        .setFooter('racetime.gg', 'https://racetime.gg/icon-512x512.png');
+        .setFooter('racetime.gg', 'https://racetime.gg/icon.svg');
     if (race.category.image) {
         embed.setThumbnail('https://racetime.gg' + race.category.image);
     }
