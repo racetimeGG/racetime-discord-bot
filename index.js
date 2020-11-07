@@ -51,7 +51,7 @@ function createEmbed(race, started) {
     if (race.category.image) {
         embed.setThumbnail(race.category.image);
     }
-    if (started) {
+    if (started && race.opened_by) {
         embed.setAuthor(
             'Race room opened by ' + race.opened_by.full_name,
             race.opened_by.avatar ? race.opened_by.avatar : null
