@@ -49,12 +49,12 @@ function createEmbed(race, started) {
         .addField('Entrants', race.entrants_count + ' total, ' + race.entrants_count_inactive + ' inactive')
         .setFooter('racetime.gg', 'https://racetime.gg/icon.svg');
     if (race.category.image) {
-        embed.setThumbnail('https://racetime.gg' + race.category.image);
+        embed.setThumbnail(race.category.image);
     }
     if (started) {
         embed.setAuthor(
             'Race room opened by ' + race.opened_by.full_name,
-            race.opened_by.avatar ? ('https://racetime.gg' + race.opened_by.avatar) : null
+            race.opened_by.avatar ? race.opened_by.avatar : null
         );
     }
     return embed;
