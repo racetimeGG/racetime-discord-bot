@@ -354,6 +354,7 @@ client.on('message', message => {
                     let channel = getChannelFromMention('<#' + item.channel + '>');
                     getCategory(item.category, category => {
                         if (!category) return;
+                        if (!channel) return;
                         message.channel.send(
                             channel.guild.toString() + ' - '
                             + channel.toString() + ' - '
