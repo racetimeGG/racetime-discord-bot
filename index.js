@@ -29,7 +29,7 @@ client.login(config.token);
 
 function getRace(race) {
     return new Promise(resolve => {
-        getJSON('https://racetime.gg' + race.data_url, function(error, race) {
+        getJSON('https://racetime.gg' + race.data_url, function (error, race) {
             if (error) {
                 console.error(error);
                 resolve(null);
@@ -73,7 +73,7 @@ function announceRace(race, channel, started) {
         channel.send(embed).then(sentMessage => {
             resolve(sentMessage.id);
         }).catch(e => {
-            console.error("error while sending announcement: " + e);
+            console.error("error while sending announcement to channel", channel.name, "in", channel.guild.name, ":", e);
             resolve(null);
         });
     });
@@ -93,7 +93,7 @@ function editRaceAnnouncement(race, channel, messageID) {
             raceMsg.edit(embed);
             resolve(raceMsg.id);
         }).catch(e => {
-            console.error("error while updating discord announcement: " + e);
+            console.error("error while updating discord announcement in channel", channel.name, "from", channel.guild.name, ":", e);
             resolve(null);
         });
     });
@@ -111,7 +111,7 @@ function removeRaceAnnouncement(channel, messageID, retry = false) {
         raceMsg.delete();
     }).catch(e => {
         if (retry) {
-            console.error("error while removing discord announcement (", channel, "|", messageID, "): " + e);
+            console.error("error while removing discord announcement (", channel, "|", messageID, "|", "in", channel.guild.name, "): " + e);
         }
         else {
             // attempt deletion again 10 seconds later
@@ -134,13 +134,18 @@ function cleanupState() {
         let ongoingRaces = response.races;
 
         for (const [index, entry] of state.races.entries()) {
-            let ongoingRaceIndex = ongoingRaces.findIndex(ongoingRace => ongoingRace.name === entry.race);
+            if (!entry)
+                return;
+
+            let ongoingRaceIndex = ongoingRaces.findIndex(ongoingRace => ongoingRace && ongoingRace.name === entry.race);
 
             if (ongoingRaceIndex === -1) {
-                for (let channelID of Object.keys(entry.announcementMsgs)) {
-                    const channel = getChannelFromMention('<#' + channelID + '>');
-                    if (channel)
-                        removeRaceAnnouncement(channel, entry.announcementMsgs[channelID]);
+                if (entry && announcementMsgs in entry) {
+                    for (let channelID of Object.keys(entry.announcementMsgs)) {
+                        const channel = getChannelFromMention('<#' + channelID + '>');
+                        if (channel)
+                            removeRaceAnnouncement(channel, entry.announcementMsgs[channelID]);
+                    }
                 }
                 state.races.splice(index, 1)
             }
@@ -244,7 +249,10 @@ function getCurrentRaces() {
         currentRaces = response.races;
         for (let raceSummary of currentRaces) {
             let race = await getRace(raceSummary);
-            let stateObjectIndex = state.races.findIndex(trackedRace => trackedRace.race === race.name);
+            if (!race || 'name' in race === false)
+                return;
+
+            let stateObjectIndex = state.races.findIndex(trackedRace => trackedRace && trackedRace.race === race.name);
 
             let raceObj = {
                 race: race.name,
@@ -252,11 +260,11 @@ function getCurrentRaces() {
             };
 
             // Ignore this race if it's already been processed and there are no new changes
-            if (stateObjectIndex !== -1 && state.races[stateObjectIndex].version >= race.version) {
+            if (stateObjectIndex !== -1 && state.races[stateObjectIndex].version && state.races[stateObjectIndex].version >= race.version) {
                 continue;
             }
 
-            if (stateObjectIndex !== -1 && Object.keys(state.races[stateObjectIndex].announcementMsgs).length > 0) {
+            if (stateObjectIndex !== -1 && state.races[stateObjectIndex].announcementMsgs && Object.keys(state.races[stateObjectIndex].announcementMsgs).length > 0) {
                 raceObj.announcementMsgs = state.races[stateObjectIndex].announcementMsgs
             } else {
                 raceObj.announcementMsgs = {};
@@ -270,6 +278,9 @@ function getCurrentRaces() {
 
                     if (raceObj.announcementMsgs && channelID in raceObj.announcementMsgs) {
                         annoucementID = await editRaceAnnouncement(race, channel, raceObj.announcementMsgs[channelID]);
+                        if (annoucementID != null) {
+                            delete raceObj.announcementMsgs[channelID];
+                        }
                     }
                     else {
                         annoucementID = await announceRace(race, channel, true);
