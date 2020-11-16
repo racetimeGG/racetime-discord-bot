@@ -134,9 +134,9 @@ function cleanupState() {
         let ongoingRaces = response.races;
 
         for (const [index, entry] of state.races.entries()) {
-            let ongoingRaceIndex = ongoingRaces.findIndex(ongoingRace => ongoingRace.name === entry.race);
+            let ongoingRaceIndex = ongoingRaces.findIndex(ongoingRace => ongingRace && entry && ongoingRace.name === entry.race);
 
-            if (ongoingRaceIndex === -1) {
+            if (ongoingRaceIndex === -1 && entry) {
                 for (let channelID of Object.keys(entry.announcementMsgs)) {
                     const channel = getChannelFromMention('<#' + channelID + '>');
                     if (channel)
@@ -244,7 +244,7 @@ function getCurrentRaces() {
         currentRaces = response.races;
         for (let raceSummary of currentRaces) {
             let race = await getRace(raceSummary);
-            let stateObjectIndex = state.races.findIndex(trackedRace => trackedRace.race === race.name);
+            let stateObjectIndex = state.races.findIndex(trackedRace => trackedRace && race && trackedRace.race === race.name);
 
             let raceObj = {
                 race: race.name,
