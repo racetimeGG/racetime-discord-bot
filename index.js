@@ -140,7 +140,7 @@ function cleanupState() {
             let ongoingRaceIndex = ongoingRaces.findIndex(ongoingRace => ongoingRace && ongoingRace.name === entry.race);
 
             if (ongoingRaceIndex === -1) {
-                if (entry && announcementMsgs in entry) {
+                if (entry && "announcementMsgs" in entry) {
                     for (let channelID of Object.keys(entry.announcementMsgs)) {
                         const channel = getChannelFromMention('<#' + channelID + '>');
                         if (channel)
@@ -278,7 +278,7 @@ function getCurrentRaces() {
 
                     if (raceObj.announcementMsgs && channelID in raceObj.announcementMsgs) {
                         annoucementID = await editRaceAnnouncement(race, channel, raceObj.announcementMsgs[channelID]);
-                        if (annoucementID != null) {
+                        if (annoucementID == null) {
                             delete raceObj.announcementMsgs[channelID];
                         }
                     }
