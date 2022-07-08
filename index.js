@@ -24,7 +24,11 @@ if (!fs.existsSync(stateFile)) {
 const config = require(configFile);
 let currentRaces = [];
 
-const client = new discord.Client();
+const client = new discord.Client({
+    intents: ["GUILDS", "GUILD_MESSAGES"],
+    partials: ['MESSAGE', 'CHANNEL'],
+    restTimeOffset: 1000
+  });
 client.login(config.token);
 
 function getRace(race) {
@@ -47,15 +51,15 @@ function createEmbed(race, started) {
         .setURL('https://racetime.gg' + race.url)
         .setDescription(race.status.help_text)
         .addField('Entrants', race.entrants_count + ' total, ' + race.entrants_count_inactive + ' inactive')
-        .setFooter('racetime.gg', 'https://racetime.gg/icon.svg');
+        .setFooter({ "text": 'racetime.gg', "iconURL": 'https://racetime.gg/apple-touch-icon.png'});
     if (race.category.image) {
         embed.setThumbnail(race.category.image);
     }
     if (started && race.opened_by) {
-        embed.setAuthor(
-            'Race room opened by ' + race.opened_by.full_name,
-            race.opened_by.avatar ? race.opened_by.avatar : null
-        );
+        embed.setAuthor({
+            "name": 'Race room opened by ' + race.opened_by.full_name,
+            "iconURL": race.opened_by.avatar ? race.opened_by.avatar : ""
+        });
     }
     return embed;
 }
@@ -70,7 +74,7 @@ function createEmbed(race, started) {
 function announceRace(race, channel, started) {
     return new Promise(resolve => {
         let embed = createEmbed(race, started);
-        channel.send(embed).then(sentMessage => {
+        channel.send({embeds: [embed]}).then(sentMessage => {
             resolve(sentMessage.id);
         }).catch(e => {
             console.error("error while sending announcement to channel", channel.name, "in", channel.guild.name, ":", e);
@@ -90,7 +94,7 @@ function editRaceAnnouncement(race, channel, messageID) {
     return new Promise(resolve => {
         let embed = createEmbed(race, true);
         channel.messages.fetch(messageID).then(raceMsg => {
-            raceMsg.edit(embed);
+            raceMsg.edit({embeds: [embed]});
             resolve(raceMsg.id);
         }).catch(e => {
             console.error("error while updating discord announcement in channel", channel.name, "from", channel.guild.name, ":", e);
@@ -309,14 +313,14 @@ client.once('ready', () => {
     setInterval(getCurrentRaces, 10000);
 });
 
-client.on('message', message => {
+client.on('messageCreate', message => {
     if (!message.content.startsWith('!') || message.author.bot) {
         return;
     }
 
     const args = message.content.slice(1).split(/ +/);
     const command = args.shift().toLowerCase();
-    if (message.member.hasPermission('MANAGE_GUILD')) {
+    if (message.member.permissions.has('MANAGE_GUILD')) {
         if (command === 'rtadd') {
             if (args.length < 2) {
                 message.channel.send(
