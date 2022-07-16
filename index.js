@@ -146,7 +146,7 @@ function cleanupState() {
             if (ongoingRaceIndex === -1) {
                 if (entry && "announcementMsgs" in entry) {
                     for (let channelID of Object.keys(entry.announcementMsgs)) {
-                        const channel = getChannelFromMention('<#' + channelID + '>');
+                        const channel = getChannelFromID(channelID);
                         if (channel)
                             removeRaceAnnouncement(channel, entry.announcementMsgs[channelID]);
                     }
@@ -235,9 +235,19 @@ function getChannelFromMention(mention) {
             mention = mention.slice(1);
         }
 
-        return client.channels.cache.get(mention);
+        return getChannelFromID(mention);
     }
     return null;
+}
+
+/**
+ * Retrieve a Discord channel from a string ID.
+ *
+ * @param id
+ * @returns {Channel}
+ */
+function getChannelFromID(id) {
+    return client.channels.cache.get(id);
 }
 
 /**
@@ -276,7 +286,7 @@ function getCurrentRaces() {
 
             let categoryAnnouncers = getAnnouncersForCategory(race.category.slug);
             for (let channelID of categoryAnnouncers) {
-                const channel = getChannelFromMention('<#' + channelID + '>');
+                const channel = getChannelFromID(channelID);
                 if (channel) {
                     let annoucementID;
 
@@ -366,7 +376,7 @@ client.on('messageCreate', message => {
                     'Here are all the race categories I am currently announcing:'
                 );
                 state.announcers.forEach(item => {
-                    let channel = getChannelFromMention('<#' + item.channel + '>');
+                    let channel = getChannelFromID(item.channel);
                     getCategory(item.category, category => {
                         if (!category) return;
                         if (!channel) return;
@@ -414,7 +424,7 @@ client.on('messageCreate', message => {
                     'Here are all the race categories I am currently announcing on this server:'
                 );
                 announcers.forEach(item => {
-                    let channel = getChannelFromMention('<#' + item.channel + '>');
+                    let channel = getChannelFromID(item.channel);
                     getCategory(item.category, category => {
                         message.channel.send(
                             channel.toString() + ' - '
