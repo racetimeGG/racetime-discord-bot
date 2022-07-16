@@ -1,0 +1,19 @@
+{
+    "env": {
+        "es6": true,
+        "node": true
+    },
+    "extends": "eslint:recommended",
+    "parserOptions": {
+        "ecmaVersion": 2021,
+        "sourceType": "script"
+    },
+    "rules": {
+        "indent": [ "warn", 4 ],
+        "linebreak-style":[ "error", "unix" ],
+        "brace-style": "error",
+        "no-tabs":"error",
+        "no-trailing-spaces":"error",
+        "no-var": "error"
+    }
+}
