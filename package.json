@@ -7,6 +7,7 @@
   "main": "index.js",
   "dependencies": {
     "discord.js": "^13.8.1",
+    "eslint": "^8.19.0",
     "get-json": "^1.0.1",
     "jsonfile": "^6.1.0"
   },

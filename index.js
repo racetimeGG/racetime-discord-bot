@@ -28,7 +28,7 @@ const client = new discord.Client({
     intents: ["GUILDS", "GUILD_MESSAGES"],
     partials: ['MESSAGE', 'CHANNEL'],
     restTimeOffset: 1000
-  });
+});
 client.login(config.token);
 
 function getRace(race) {
@@ -116,8 +116,7 @@ function removeRaceAnnouncement(channel, messageID, retry = false) {
     }).catch(e => {
         if (retry) {
             console.error("error while removing discord announcement (", channel, "|", messageID, "|", "in", channel.guild.name, "): " + e);
-        }
-        else {
+        } else {
             // attempt deletion again 10 seconds later
             setTimeout(() => removeRaceAnnouncement(channel, messageID, true), 10000);
         }
@@ -285,8 +284,7 @@ function getCurrentRaces() {
                         if (annoucementID == null) {
                             delete raceObj.announcementMsgs[channelID];
                         }
-                    }
-                    else {
+                    } else {
                         annoucementID = await announceRace(race, channel, true);
                         if (annoucementID != null) {
                             raceObj.announcementMsgs[channelID] = annoucementID;
