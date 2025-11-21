@@ -1,4 +1,4 @@
-const discord = require('discord.js');
+const { Client, EmbedBuilder, GatewayIntentBits, Partials, PermissionsBitField } = require('discord.js');
 const fs = require('fs');
 const getJSON = require('get-json');
 const jsonfile = require('jsonfile');
@@ -24,9 +24,9 @@ if (!fs.existsSync(stateFile)) {
 const config = require(configFile);
 let currentRaces = [];
 
-const client = new discord.Client({
-    intents: ["GUILDS", "GUILD_MESSAGES"],
-    partials: ['MESSAGE', 'CHANNEL'],
+const client = new Client({
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+    partials: [Partials.Message, Partials.Channel],
     restTimeOffset: 1000
   });
 client.login(config.token);
@@ -45,12 +45,14 @@ function getRace(race) {
 }
 
 function createEmbed(race, started) {
-    let embed = new discord.MessageEmbed()
+    let embed = new EmbedBuilder()
         .setColor('#26dd9a')
         .setTitle(race.category.name + ' ~ ' + race.goal.name)
         .setURL('https://racetime.gg' + race.url)
         .setDescription(race.status.help_text)
-        .addField('Entrants', race.entrants_count + ' total, ' + race.entrants_count_inactive + ' inactive')
+        .addFields(
+            {name: 'Entrants', value: race.entrants_count + ' total, ' + race.entrants_count_inactive + ' inactive'},
+        )
         .setFooter({ "text": 'racetime.gg', "iconURL": 'https://racetime.gg/apple-touch-icon.png'});
     if (race.category.image) {
         embed.setThumbnail(race.category.image);
@@ -305,7 +307,7 @@ function getCurrentRaces() {
     });
 }
 
-client.once('ready', () => {
+client.once('clientReady', () => {
     console.log("Bot started!");
     cleanupState();
     getCurrentRaces();
@@ -320,7 +322,7 @@ client.on('messageCreate', message => {
 
     const args = message.content.slice(1).split(/ +/);
     const command = args.shift().toLowerCase();
-    if (message.member.permissions.has('MANAGE_GUILD')) {
+    if (message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
         if (command === 'rtadd') {
             if (args.length < 2) {
                 message.channel.send(
