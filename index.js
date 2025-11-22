@@ -60,7 +60,7 @@ function createEmbed(race, started) {
     if (started && race.opened_by) {
         embed.setAuthor({
             "name": 'Race room opened by ' + race.opened_by.full_name,
-            "iconURL": race.opened_by.avatar ? race.opened_by.avatar : ""
+            "iconURL": race.opened_by.avatar ? race.opened_by.avatar : null
         });
     }
     return embed;
