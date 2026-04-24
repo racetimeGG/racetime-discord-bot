@@ -1,16 +1,17 @@
 {
   "name": "racetime-discord-bot",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Race announcer bot for racetime.gg",
   "homepage": "https://github.com/racetimeGG/racetime-discord-bot",
   "license": "GPL-3.0",
   "main": "index.js",
   "dependencies": {
     "discord.js": "^14",
-    "get-json": "^1.0.1",
-    "jsonfile": "^6.1.0"
+    "get-json": "^1.1.0",
+    "jsonfile": "^6.2.1",
+    "bufferutil": "^4.1.0"
   },
   "engines": {
-    "node": ">=16.6.0"
+    "node": ">=22.12.0"
   }
 }

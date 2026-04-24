@@ -1,5 +1,6 @@
-const { Client, EmbedBuilder, GatewayIntentBits, Partials, PermissionsBitField } = require('discord.js');
+const { Client, EmbedBuilder, GatewayIntentBits, Partials, REST, Routes } = require('discord.js');
 const fs = require('fs');
+const path = require('path');
 const getJSON = require('get-json');
 const jsonfile = require('jsonfile');
 
@@ -307,138 +308,146 @@ function getCurrentRaces() {
     });
 }
 
-client.once('clientReady', () => {
+client.once('ready', async () => {
     console.log("Bot started!");
+
+    // Register Slash Commands
+    const commands = [];
+    const commandsPath = path.join(__dirname, 'commands');
+    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+
+    for (const file of commandFiles) {
+        const command = require(path.join(commandsPath, file));
+        if ('build' in command) {
+            commands.push(command.build());
+        }
+    }
+
+    const rest = new REST({ version: '10' }).setToken(config.token);
+
+    try {
+        console.log(`Started refreshing ${commands.length} application commands.`);
+        await rest.put(
+            Routes.applicationCommands(client.user.id),
+            { body: commands },
+        );
+        console.log(`Successfully reloaded ${commands.length} application commands.`);
+    } catch (error) {
+        console.error(error);
+    }
+
     cleanupState();
     getCurrentRaces();
     setInterval(cleanupState, 120000);
     setInterval(getCurrentRaces, 10000);
 });
 
-client.on('messageCreate', message => {
-    if (!message.content.startsWith('!') || message.author.bot) {
-        return;
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isChatInputCommand()) return;
+
+    const { commandName, options, guildId, channelId } = interaction;
+
+    if (commandName === 'rtadd') {
+        const channel = options.getChannel('channel');
+        const categorySlug = options.getString('category');
+
+        if (!channel) {
+            return interaction.reply({ content: 'Channel not found.', ephemeral: true });
+        }
+
+        getCategory(categorySlug, async category => {
+            if (!category) {
+                await interaction.reply({ content: 'Unrecognised category slug.', ephemeral: true });
+            } else if (getAnnouncersForChannel(channel.id).indexOf(category.slug) !== -1) {
+                await interaction.reply({
+                    content: `I'm already configured to announce ${category.name} races in ${channel.toString()}`,
+                    ephemeral: true
+                });
+            } else {
+                state.announcers.push({
+                    server: guildId,
+                    channel: channel.id,
+                    category: category.slug
+                });
+                commitState();
+                await interaction.reply({
+                    content: `Added automatic race announcer for ${category.name} to ${channel.toString()}`
+                });
+            }
+        });
     }
 
-    const args = message.content.slice(1).split(/ +/);
-    const command = args.shift().toLowerCase();
-    if (message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-        if (command === 'rtadd') {
-            if (args.length < 2) {
-                message.channel.send(
-                    '!rtadd - Add a race announcer.\n'
-                    + 'Usage: `!rtadd <channel> <category>`\n'
-                    + '* `<channel>` - Text channel in this server\n'
-                    + '* `<category>` - Category URL slug (e.g. "ootr", "gtasa" or "sm64"'
-                );
-            } else {
-                const channel = getChannelFromMention(args[0]);
-                if (!channel) {
-                    message.channel.send('Channel not found.');
-                } else {
-                    getCategory(args[1], category => {
-                        if (!category) {
-                            message.channel.send('Unrecognised category slug.');
-                        } else if (getAnnouncersForChannel(channel.id).indexOf(category.slug) !== -1) {
-                            message.channel.send(
-                                'I\'m already configured to announce '
-                                + category.name
-                                + ' races in ' + channel.toString()
-                            );
-                        } else {
-                            state.announcers.push({
-                                server: message.guild.id,
-                                channel: channel.id,
-                                category: category.slug
-                            });
-                            commitState();
-                            message.channel.send(
-                                'Added automatic race announcer for '
-                                + category.name
-                                + ' to ' + channel.toString()
-                            );
-                        }
-                    });
+    if (commandName === 'rtclear') {
+        const channel = options.getChannel('channel');
+        if (!channel) {
+            return interaction.reply({ content: 'Channel not found.', ephemeral: true });
+        }
+
+        state.announcers = state.announcers.filter(
+            item => item.channel !== channel.id
+        );
+        commitState();
+        await interaction.reply({
+            content: `Cleared all race announcers for ${channel.toString()}`
+        });
+    }
+
+    if (commandName === 'rtlist') {
+        let announcers = getAnnouncersForServer(guildId);
+        if (announcers.length === 0) {
+            return interaction.reply({
+                content: 'There are no race announcers on this server. Use /rtadd to create one.'
+            });
+        } else {
+            let response = 'Here are all the race categories I am currently announcing on this server:';
+            let details = [];
+            for (const item of announcers) {
+                const channel = getChannelFromMention('<#' + item.channel + '>');
+                const category = await new Promise(resolve => getCategory(item.category, resolve));
+                if (channel && category) {
+                    details.push(`${channel.toString()} - ${category.name} (${category.slug})`);
                 }
             }
-        }
-        if (message.channel.id === config.debugChannel) {
-            if (command === 'rtlistall') {
-                message.channel.send(
-                    'Here are all the race categories I am currently announcing:'
-                );
-                state.announcers.forEach(item => {
-                    let channel = getChannelFromMention('<#' + item.channel + '>');
-                    getCategory(item.category, category => {
-                        if (!category) return;
-                        if (!channel) return;
-                        message.channel.send(
-                            channel.guild.toString() + ' - '
-                            + channel.toString() + ' - '
-                            + category.name + ' (' + category.slug + ')'
-                        );
-                    });
-                });
-            }
-        }
-        if (command === 'rtclear') {
-            if (args.length < 1) {
-                message.channel.send(
-                    '!rtclear - Clear all announces from a channel.\n'
-                    + 'Usage: `!rtclear <channel>`\n'
-                    + '* `<channel>` - Text channel in this server'
-                );
-            } else {
-                const channel = getChannelFromMention(args[0]);
-                if (!channel) {
-                    message.channel.send('Channel not found.');
-                } else {
-                    getAnnouncersForChannel(channel.id);
-                    state.announcers = state.announcers.filter(
-                        item => item.channel !== channel.id
-                    );
-                    commitState();
-                    message.channel.send(
-                        'Cleared all race announcers for ' + channel.toString()
-                    );
-                }
-            }
-        }
-        if (command === 'rtlist') {
-            let announcers = getAnnouncersForServer(message.guild.id);
-            if (announcers.length === 0) {
-                message.channel.send(
-                    'There are no race announcers on this server. '
-                    + 'Use !rtadd to create one.'
-                );
-            } else {
-                message.channel.send(
-                    'Here are all the race categories I am currently announcing on this server:'
-                );
-                announcers.forEach(item => {
-                    let channel = getChannelFromMention('<#' + item.channel + '>');
-                    getCategory(item.category, category => {
-                        message.channel.send(
-                            channel.toString() + ' - '
-                            + category.name + ' (' + category.slug + ')'
-                        );
-                    });
-                });
-            }
+            await interaction.reply({ content: response + '\n' + details.join('\n') });
         }
     }
-    if (command === 'races') {
-        let categories = getAnnouncersForChannel(message.channel.id);
-        if (categories.length === 0) return;
+
+    if (commandName === 'rtlistall') {
+        if (interaction.channelId !== config.debugChannel) {
+            return interaction.reply({ content: 'This command can only be used in the debug channel.', ephemeral: true });
+        }
+
+        let response = 'Here are all the race categories I am currently announcing:';
+        let details = [];
+        for (const item of state.announcers) {
+            const channel = getChannelFromMention('<#' + item.channel + '>');
+            const category = await new Promise(resolve => getCategory(item.category, resolve));
+            if (channel && category) {
+                details.push(`${channel.guild.toString()} - ${channel.toString()} - ${category.name} (${category.slug})`);
+            }
+        }
+        await interaction.reply({ content: response + '\n' + details.join('\n') });
+    }
+
+    if (commandName === 'races') {
+        let categories = getAnnouncersForChannel(channelId);
+        if (categories.length === 0) {
+            return interaction.reply({ content: 'This channel is not configured to announce any race categories.', ephemeral: true });
+        }
         let races = currentRaces.filter(
             race => categories.indexOf(race.category.slug) !== -1
         );
         if (races.length === 0) {
-            message.channel.send('There are no races going on at the moment.');
+            await interaction.reply({ content: 'There are no races going on at the moment.' });
         } else {
-            races.forEach(raceSummary => {
-                getRace(raceSummary).then(race => announceRace(race, message.channel, false));
-            });
+            await interaction.reply({ content: 'Fetching current races...' });
+            for (const raceSummary of races) {
+                const race = await getRace(raceSummary);
+                if (race) {
+                    await announceRace(race, interaction.channel, false);
+                }
+            }
         }
     }
 });
